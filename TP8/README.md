@@ -20,10 +20,10 @@ Inclure le fichier chiffré dans un playbook pour utiliser les variables sécuri
 
 4. Exécution du playbook
 Lancer le playbook avec l’option --ask-vault-pass pour fournir le mot de passe et permettre l’accès aux secrets.
-![ansible](../ansible/docs/screenshots/tp688.png)
+![ansible](../docs/screenshots/tp688.png)
 
 5. Modification d’un fichier chiffré
 Utiliser ansible-vault edit pour modifier temporairement le fichier chiffré puis le sauvegarder.
 6. Ré-encryptage
 Utiliser ansible-vault rekey si besoin de changer le mot de passe de chiffrement du fichier.
-![ansible](../ansible/docs/screenshots/tp888.png)
+![ansible](../docs/screenshots/tp888.png)
