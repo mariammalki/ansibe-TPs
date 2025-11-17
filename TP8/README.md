@@ -13,7 +13,7 @@ Créer un fichier pour stocker des informations sensibles, comme un mot de passe
 2. Chiffrement avec Ansible Vault
 Chiffrer le fichier pour le protéger et empêcher que son contenu soit visible en clair.
 
-![ansible](docs/screenshots/tp8.png)
+![ansible](ansible/docs/screenshots/tp8.png)
 
 3. Utilisation du fichier chiffré dans un playbook
 Inclure le fichier chiffré dans un playbook pour utiliser les variables sécurisées lors du déploiement.
