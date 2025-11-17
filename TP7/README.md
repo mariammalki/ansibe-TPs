@@ -36,5 +36,5 @@ Créer un playbook principal pour inclure le rôle Jenkins et le déployer sur l
 
 6. Exécution du playbook
 Lancer le playbook et vérifier l’installation sur la machine distante via un navigateur.
-![ansible](../docs/screenshots/tp7.png)
 ![ansible](../docs/screenshots/tp77.png)
+![ansible](../docs/screenshots/tp7.png)
