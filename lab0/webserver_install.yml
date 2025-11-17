@@ -1,0 +1,26 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: Create test folder
+      ansible.builtin.file:
+        path: /home/mariem/test
+        state: directory
+        mode: '0755'
+
+    - name: Install Apaaaaaaaaaaache
+      apt:
+        name: apache2
+        state: present
+        update_cache: true
+
+    - name: Copy my web site to nodes
+      copy:
+        src: index.html
+        dest: /var/www/html
+        owner: mariem
+        mode: '0444'
+

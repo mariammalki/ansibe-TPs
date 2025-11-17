@@ -1,0 +1,30 @@
+---
+- name: Copy docker-compose file
+  ansible.builtin.copy:
+    src: docker-compose.yml
+    dest: /home/mariem/docker-compose.yml
+    mode: '0644'
+
+- name: Deploy the container from docker-compose
+  community.docker.docker_compose:
+    project_src: /home/mariem
+    state: present
+    detached: yes
+
+- name: Wait for web container
+  ansible.builtin.wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 80
+    timeout: 120
+
+- name: GET web homepage
+  ansible.builtin.uri:
+    url: "http://{{ inventory_hostname }}/"
+    return_content: yes
+  register: web_check
+  failed_when: web_check.status not in [200, 301, 302]
+
+- name: Show first 150 chars of web response
+  ansible.builtin.debug:
+    msg: "{{ web_check.content[:150] }}"
+

@@ -1,0 +1,7 @@
+---
+# vars file for roles/nginx
+nginx_package: nginx
+nginx_service: nginx
+server_name: "monapplication.local"
+document_root: "/var/www/html"
+

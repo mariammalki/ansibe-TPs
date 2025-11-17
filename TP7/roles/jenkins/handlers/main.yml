@@ -1,0 +1,7 @@
+---
+# handlers file for roles/jenkins
+- name: Redémarrer Jenkins
+  service:
+    name: "{{ jenkins_service }}"
+    state: restarted
+  become: yes

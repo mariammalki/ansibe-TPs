@@ -1,0 +1,9 @@
+- name: Déploiement avec Ansible Vault
+  hosts: all
+  become: yes
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Afficher les informations de la base de données
+      debug:
+        msg: "Connexion à la base avec {{ db_user }} / {{ db_password }}"

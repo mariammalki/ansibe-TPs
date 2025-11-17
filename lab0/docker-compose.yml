@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  web:
+    image: mariem507/ansible-demo:v1   
+    container_name: ansible_web_demo
+    ports:
+      - "80:80"       
+    restart: always

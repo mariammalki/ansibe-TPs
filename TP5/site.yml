@@ -1,0 +1,7 @@
+- name: Déploiement de Nginx
+  hosts: webservers
+  become: yes
+
+  roles:
+    - nginx
+

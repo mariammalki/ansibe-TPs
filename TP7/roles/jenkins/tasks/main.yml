@@ -1,0 +1,38 @@
+---
+# tasks file for roles/jenkins
+- name: Installer les dépendances
+  apt:
+    name:
+      - openjdk-11-jdk
+      - apt-transport-https
+      - ca-certificates
+      - curl
+    state: present
+  become: yes
+
+- name: Ajouter la clé du dépôt Jenkins
+  ansible.builtin.get_url:
+    url: "{{ jenkins_repo_key }}"
+    dest: /usr/share/keyrings/jenkins-keyring.asc
+    mode: '0644'
+  become: yes
+
+- name: Ajouter le dépôt Jenkins
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+  become: yes
+
+- name: Installer Jenkins
+  apt:
+    name: "{{ jenkins_package }}"
+    state: present
+  become: yes
+
+- name: Démarrer et activer Jenkins
+  service:
+    name: "{{ jenkins_service }}"
+    state: started
+    enabled: yes
+  become: yes
+

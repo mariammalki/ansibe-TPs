@@ -1,0 +1,20 @@
+nodes:
+  hosts:
+    192.168.1.18:
+      ansible_user: mariem
+    192.168.1.43:
+      ansible_user: mariem
+
+webserver:
+  hosts:
+    192.168.1.43: {}
+
+ftpserver:
+  hosts:
+    192.168.1.18: {}
+
+
+
+
+
+

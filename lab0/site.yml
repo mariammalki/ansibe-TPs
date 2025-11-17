@@ -1,0 +1,9 @@
+---
+- name: Install DevOps Tools and Deploy Web Container
+  hosts: all
+  become: yes
+
+  roles:
+    - jenkins_install
+    - docker_portainer_install
+    - container_deployment

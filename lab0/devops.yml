@@ -1,0 +1,316 @@
+---
+- name: Install DevOps tools and deploy custom web container 
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # ----- Paramètres à adapter -----
+    compose_dir: /opt/demo1/compose
+    compose_file: "{{ compose_dir }}/docker-compose.yml"
+
+    # Port d'exposition du site (80 par défaut) :
+    web_http_port: 80
+    # Si un service occupe 80 (ex. Apache), mettre free_port_80: true ou change web_http_port: 8081
+    free_port_80: true
+    purge_apache: true
+
+    # Jenkins & Portainer
+    jenkins_http_port: 8080
+    portainer_https_port: 9443
+
+    # ----- Internes APT / clés -----
+    keyrings_dir: /etc/apt/keyrings
+    docker_key_asc: "{{ keyrings_dir }}/docker.asc"
+    docker_keyring: "{{ keyrings_dir }}/docker.gpg"
+    # Jenkins: clé ASCII (conforme à la doc officielle)
+    jenkins_key_asc: "{{ keyrings_dir }}/jenkins-keyring.asc"
+
+    arch_map:
+      x86_64: amd64
+      aarch64: arm64
+      armv7l: armhf
+    arch: "{{ arch_map.get(ansible_architecture, 'amd64') }}"
+    codename: "{{ ansible_distribution_release }}"
+
+  pre_tasks:
+    # 1) Nettoyage dépôts AVANT tout apt update (évite Conflicting Signed-By)
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: "{{ keyrings_dir }}"
+        state: directory
+        mode: '0755'
+
+    # Jenkins cleanup
+    - name: Remove legacy Jenkins repo files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/jenkins.list
+        - /etc/apt/sources.list.d/jenkins-stable.list
+        - /etc/apt/sources.list.d/pkg_jenkins_io_debian-stable.list
+        - /etc/apt/sources.list.d/jenkins_io_debian_stable.list
+      ignore_errors: yes
+
+    - name: Remove Jenkins entries from /etc/apt/sources.list
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list
+        regexp: '.*pkg\.jenkins\.io.*'
+        state: absent
+
+    - name: Remove old Jenkins keyrings in /usr/share/keyrings (if any)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /usr/share/keyrings/jenkins-keyring.asc
+        - /usr/share/keyrings/jenkins-keyring.gpg
+      ignore_errors: yes
+
+    # Docker cleanup
+    - name: Remove legacy Docker repo files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/apt/sources.list.d/docker.list
+        - /etc/apt/sources.list.d/docker-ce.list
+        - /etc/apt/sources.list.d/download_docker_com_linux_ubuntu.list
+      ignore_errors: yes
+
+    - name: Remove Docker entries from /etc/apt/sources.list
+      ansible.builtin.lineinfile:
+        path: /etc/apt/sources.list
+        regexp: '.*download\.docker\.com.*'
+        state: absent
+
+    - name: Remove old Docker keyring in /usr/share/keyrings (if any)
+      ansible.builtin.file:
+        path: /usr/share/keyrings/docker-archive-keyring.gpg
+        state: absent
+      ignore_errors: yes
+
+  tasks:
+    # 2) Outils APT de base
+    - name: Install base apt tools
+      ansible.builtin.apt:
+        update_cache: yes
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - apt-transport-https
+        state: present
+
+    # 3) Docker : clé + dépôt + installation
+    - name: Download Docker GPG key (ASCII)
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: "{{ docker_key_asc }}"
+        mode: '0644'
+
+    - name: Dearmor Docker key to keyring (binary)
+      ansible.builtin.command: "gpg --dearmor -o {{ docker_keyring }} {{ docker_key_asc }}"
+      args:
+        creates: "{{ docker_keyring }}"
+
+    - name: Ensure Docker keyring is world-readable
+      ansible.builtin.file:
+        path: "{{ docker_keyring }}"
+        mode: '0644'
+
+    - name: Add Docker APT repository (single canonical source)
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ arch }} signed-by={{ docker_keyring }}] https://download.docker.com/linux/ubuntu {{ codename }} stable"
+        filename: docker
+        state: present
+        update_cache: yes
+
+    - name: Install Docker Engine & plugins & Python SDK
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin      # Compose v2
+          - python3-docker             # requis par community.docker
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker is started and enabled
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # 4) Jenkins : clé ASCII + dépôt + update + installation (méthode officielle)
+    - name: Download Jenkins GPG key (ASCII, official)
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: "{{ jenkins_key_asc }}"
+        mode: '0644'
+
+    - name: Add Jenkins APT repository (no update_cache here)
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by={{ jenkins_key_asc }}] https://pkg.jenkins.io/debian-stable binary/"
+        filename: jenkins
+        state: present
+        update_cache: no
+
+    - name: Update apt cache (after adding Jenkins repo)
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Java runtime for Jenkins (OpenJDK 21)
+      ansible.builtin.apt:
+        name: openjdk-21-jre
+        state: present
+
+    - name: Install Jenkins
+      ansible.builtin.apt:
+        name: jenkins
+        state: present
+
+    - name: Ensure Jenkins is started and enabled
+      ansible.builtin.systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # 5) Libérer le port 80 si nécessaire (Apache)
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Stop and disable Apache if installed
+      ansible.builtin.systemd:
+        name: apache2
+        state: stopped
+        enabled: no
+      when: free_port_80 and ('apache2' in ansible_facts.packages)
+
+    - name: Purge Apache (optional)
+      ansible.builtin.apt:
+        name: apache2
+        state: absent
+        purge: yes
+      when: free_port_80 and purge_apache and ('apache2' in ansible_facts.packages)
+
+    # 6) Portainer (HTTPS 9443)
+    - name: Ensure portainer_data volume exists
+      community.docker.docker_volume:
+        name: portainer_data
+        state: present
+
+    - name: Run Portainer CE (HTTPS 9443)
+      community.docker.docker_container:
+        name: portainer
+        image: portainer/portainer-ce:latest
+        state: started
+        restart_policy: always
+        command: -H unix:///var/run/docker.sock
+        published_ports:
+          - "{{ portainer_https_port }}:9443"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - portainer_data:/data
+
+    # 7) Déploiement Compose v2 — corrections (fichiers multiples / version / nom container)
+    - name: Ensure compose directory exists
+      ansible.builtin.file:
+        path: "{{ compose_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Remove alternate compose filename (yaml)
+      ansible.builtin.file:
+        path: "{{ compose_dir }}/docker-compose.yaml"
+        state: absent
+
+    - name: Remove previous fixed-name container if it exists
+      community.docker.docker_container:
+        name: ansible_web_demo
+        state: absent
+        force_kill: true
+      ignore_errors: true
+
+    - name: Ensure previous stack is down (idempotent)
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_dir }}"
+        state: absent
+      ignore_errors: true
+
+    # Compose sans 'version' et sans 'container_name' (évite warnings & conflits)
+    - name: Place docker-compose.yml (clean)
+      ansible.builtin.copy:
+        dest: "{{ compose_file }}"
+        mode: '0644'
+        content: |
+          services:
+            web:
+              image: mariem507/ansible-demo:v1
+              ports:
+                - "{{ web_http_port }}:80"
+              restart: unless-stopped
+
+    - name: Deploy stack with Compose v2 (clean)
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_dir }}"
+        project_name: demo1
+        state: present
+        recreate: always
+        remove_orphans: true
+      register: compose_out
+
+    # 8) Tests de connectivité
+    - name: Wait for Web
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ web_http_port }}"
+        timeout: 120
+
+    - name: Wait for Jenkins
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ jenkins_http_port }}"
+        timeout: 180
+
+    - name: Wait for Portainer
+      ansible.builtin.wait_for:
+        host: "{{ inventory_hostname }}"
+        port: "{{ portainer_https_port }}"
+        timeout: 120
+
+    - name: GET web homepage
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}:{{ web_http_port }}/"
+        return_content: yes
+      register: web_check
+      failed_when: web_check.status not in [200, 301, 302]
+
+    - name: Show first 150 chars of web response
+      ansible.builtin.debug:
+        msg: "{{ web_check.content[:150] }}"
+
+  post_tasks:
+    # (Optionnel) Ouvrir les ports si UFW est actif
+    - name: Check UFW status
+      ansible.builtin.command: ufw status
+      register: ufw_status
+      changed_when: false
+      failed_when: false
+
+    - name: Open required ports in UFW (if active)
+      ansible.builtin.command: "ufw allow {{ item }}/tcp"
+      loop:
+        - 22
+        - "{{ web_http_port }}"
+        - "{{ jenkins_http_port }}"
+        - "{{ portainer_https_port }}"
+      when: "'Status: active' in ufw_status.stdout"
+      ignore_errors: yes
+

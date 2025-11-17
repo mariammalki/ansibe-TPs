@@ -1,0 +1,21 @@
+- name: Installer et configurer Apache
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Installer Apache
+      apt:
+        name: apache2
+        state: present
+    - name: Démarrer et activer Apache
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+    - name: Déployer une page HTML
+      copy:
+        content: "<h1>Bienvenue sur mon serveur Apache</h1>"
+        dest: /var/www/html/index.html
+
+    - name: Afficher les informations système
+      debug:
+        msg: "Système : {{ ansible_distribution }} {{ ansible_distribution_version }} - Hostname : {{ ansible_hostname }}"
