@@ -35,7 +35,7 @@ TP3-4/
 ### Exécution
 
 ansible-playbook apache.yml
-![ansible](ansible-main/docs/screenshots/act3ansible.png)
+![ansible](../docs/screenshots/act3ansible.png)
 
 Vérification
 Accéder à l’adresse IP de la machine distante via un navigateur :
