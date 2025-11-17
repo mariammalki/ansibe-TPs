@@ -42,7 +42,7 @@ Accéder à l’adresse IP de la machine distante via un navigateur :
 
 http://<IP_DISTANTE>
 Vous devriez voir la page HTML affichant "Bienvenue sur mon serveur Apache".
-![ansible](docs/screenshots/act3-ansible.png)
+![ansible](../docs/screenshots/act3-ansible.png)
 
 # TP4 : Gestion des Variables et Facts
 
@@ -56,9 +56,9 @@ Apprendre à utiliser les variables et les ansible_facts pour rendre les playboo
 4. Exécuter le playbook :
 
 ansible-playbook apache_vars.yml
-![ansible](docs/screenshots/act4ansible.png)
+![ansible](../docs/screenshots/act4ansible.png)
 
 Vérification
 Ouvrir un navigateur sur l'IP de la machine distante :
 Vous devriez voir la page HTML personnalisée avec le hostname.
-![ansible](docs/screenshots/act4-ansible.png)
+![ansible](../docs/screenshots/act4-ansible.png)
