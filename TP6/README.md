@@ -22,9 +22,9 @@ Créer et copier une page web sur le serveur pour qu’elle reflète les variabl
 
 5. Exécution du playbook
 Lancer le playbook Ansible pour appliquer les modifications sur la machine distante.
-![ansible](docs/screenshots/tp66.png)
+![ansible](../docs/screenshots/tp66.png)
 
 Vérification
 
 Accéder à l’IP du serveur depuis un navigateur.Vous devriez voir la page affichant "Bienvenue sur monapplication.local".
-![ansible](docs/screenshots/tp6.png)
+![ansible](../docs/screenshots/tp6.png)
